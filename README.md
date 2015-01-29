@@ -1,6 +1,5 @@
 ![alt tag](./blt.png)
 
-Bash Launcher for Tests (BLT)
 ==================
 BLT is a cross-environment test execution platform. Written purely in Bash, BLT works with Windows (via Gitbash or Cygwin), OSX, and Linux.
 
