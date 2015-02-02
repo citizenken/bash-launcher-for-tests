@@ -1,0 +1,88 @@
+#!/bin/bash
+#
+#Installs Bash Launcher for Tests
+#
+#Supports Gitbash, Mac and Linux
+#
+#@copyright 2015 Kenneth Petti
+
+set -e
+export DEFAULT_REPO_LOCATION="${HOME}/.blt"
+export VERBOSE=1
+
+check_root () {
+    if [[ $EUID -ne 0 ]]; then
+        exit_blt 1 "Root access is required. Please run 'install_blt' again with root."
+    fi
+}
+
+parse_options () {
+    while getopts ":y:v" option; do
+        case $option in
+            v) VERBOSE=0;;
+            y) BLT_REPO_LOCATION="${OPTARG}";;
+            *)
+                echo "${OPTARG} is an invaild argument."
+                echo "USAGE: install_blt [-y <installation path>][-v]"
+                exit_blt
+                ;;
+        esac
+    done
+}
+
+install_in_default_location () {
+    until [[ $response == 'y' || $response == 'n' ]]; do
+        read -p "Install BLT in the default location (${DEFAULT_REPO_LOCATION})? (y/n):" response
+    done
+
+    if [[ "${response}" == "y" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+main () {
+    parse_options "${@}"
+
+    # if [[ -z "${BLT_REPO_LOCATION}" ]]; then
+        # if install_in_default_location; then
+            BLT_REPO_LOCATION="${DEFAULT_REPO_LOCATION}"
+    #     else
+    #         exit_blt 2 "Please rerun this script and pass in the -y option, followed by the desired directory"
+    #     fi
+    # fi
+
+    local install_user=$(logname)
+    local install_group=$(groups "${install_user}" | cut -d " " -f 1)
+
+    # verbose "Copying: ./blt -> /usr/bin"
+    cp "./blt" /usr/bin
+
+    verbose "Making: ${BLT_REPO_LOCATION} with following ownership: ${install_user}:${install_group}"
+    mkdir -p "${BLT_REPO_LOCATION}" &&
+    chown "${install_user}":"${install_group}" "${BLT_REPO_LOCATION}"
+
+    verbose "Copying: ./bin/ -> ${BLT_REPO_LOCATION}/bin/"
+    cp -pR "./bin/" "${BLT_REPO_LOCATION}/bin/"
+
+    verbose "Copying: ./config/ -> ${BLT_REPO_LOCATION}/config/"
+    cp -pR "./config/" "${BLT_REPO_LOCATION}/config/"
+
+    verbose "Copying: ./lib/ -> ${BLT_REPO_LOCATION}/lib/"
+    cp -pR "./lib/" "${BLT_REPO_LOCATION}/lib/"
+
+    verbose "Copying: ./modules/ -> ${BLT_REPO_LOCATION}/modules/"
+    cp -pR "./modules/" "${BLT_REPO_LOCATION}/modules/"
+
+    verbose "Copying: ./help/ -> ${BLT_REPO_LOCATION}/help/"
+    cp -pR "./help/" "${BLT_REPO_LOCATION}/help/"
+
+    exit
+
+}
+
+source ./lib/utility_functions
+
+check_root
+main "${@}"
