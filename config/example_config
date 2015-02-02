@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# The configuration file for BLT
+#
+# See README and LICENSE for more information
+#
+# Version 1.0.0
+# @copyright 2015 Kenneth Petti
+
+
+#-------------- URLs --------------
+# These URLs are curled throughout the scripts
+#----------------------------------
+
+
+#-------------- Files/directories --------------
+# All paths are Linux formatted, and should end without a trailing slash, as
+# as the trailing slash is added when the variable is used (ex. "${PATCH_DIR}/${PATCH_NAME}")
+#----------------------------------
+
+export BLT_REPO_LOCATION="${HOME}/.blt"
+export REQUIRES_REMOTE_EXECUTION="MINGW32 Darwin CYGWIN"
+export SUPPORTED_REPOSITORIES="php"
+
+
+#-------------- Global Variables --------------
+# Varibles that are used thoughout the scripts that should be constant
+#----------------------------------------------

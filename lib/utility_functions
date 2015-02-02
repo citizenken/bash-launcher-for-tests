@@ -1,0 +1,104 @@
+#!/bin/bash
+
+check_dependencies () {
+    local directory="${1}"
+    local dependencies=( "${@:2}" )
+    local missing_dependencies=()
+    local dependency_path
+
+    for i in "${dependencies[@]}"; do
+        dependency_path="${BLT_REPO_LOCATION}${directory}/${i}"
+        if [[ ! -e "${dependency_path}" ]]; then
+            missing_dependencies=("${missing_dependencies[@]}" "${dependency_path}")
+        fi
+    done
+
+    if [[ "${#missing_dependencies}" -gt 0 ]]; then
+        echo "The following dependencies are missing. Please install them and try again."
+        for i in "${missing_dependencies[@]}"; do
+            echo "${i}"
+        done
+        exit 1
+    fi
+}
+
+prompt_for_y_n_answer () {
+    local prompt="${1}"
+    local default_answer="${2}"
+    local answer
+
+    #Set default paramater when running in background
+    if [[ $BACKGROUND -eq 1 && -n "$default_answer" ]]; then
+        answer="$default_answer"
+    fi
+    #Echo the passed in prompt, and keep prompting until the user input is y or n
+    until [[ $answer == 'y' ]] || [[ $answer == 'n' ]]; do
+        read -e -p "${prompt}" answer
+    done
+
+    if [[ $answer == 'y' ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+in_array () {
+    local needle="${1}"
+    local haystack=( "${@:2}" )
+    local i
+
+    for i in "${haystack[@]}"; do
+        if [[ "${i}" == "${needle}" ]]; then
+         return 0
+        fi
+    done
+    return 1
+}
+
+verbose () {
+    local statement="${1}"
+
+    if [[ $VERBOSE -eq 0 ]]; then
+        echo "${statement}"
+    fi
+}
+
+debug () {
+    local statement="${1}"
+
+    if [[ $DEBUG -eq 0 ]]; then
+        echo "${statement}"
+    fi
+}
+
+find_index () {
+    local needle="${1}"
+    local haystack="${@:2}"
+
+    for i in "${!haystack[@]}"; do
+        if [[ "${needle}" == "${haystack[$i]}" ]]; then
+            echo "${i}"
+        fi
+    done
+}
+
+source_dependencies () {
+    local directory="${1}"
+    local files="${@:2}"
+
+    for i in "${files[@]}"; do
+        source "${BLT_REPO_LOCATION}/${directory}/${i}"
+    done
+}
+
+exit_blt () {
+    local exit_code="${1}"
+    local exit_message="${2}"
+
+    if [[ -n "${exit_message}" ]]; then
+        echo "${exit_message}"
+    fi
+
+    exit ${exit_code}
+}

@@ -1,0 +1,125 @@
+#!/bin/bash
+#
+# A pure-Bash cross-platform tool to make executing tests easier
+#
+# Supports Gitbash, Mac and Linux
+#
+# @copyright 2015 Kenneth Petti
+
+
+export LIB=("utility_functions")
+export HELP=("blt_help")
+# export MODULES=("check_set_environment")
+
+process_args() {
+    # Checks if there is a command to run passed in. Processes options
+
+    # local command=$1
+    # All blt launcher options are long, and blt launcher-specific options (only do thing in the launcher) begin with "yl"
+    while getopts ":*-:" options; do
+       case $options in
+            -)
+                case ${OPTARG} in
+                    version)
+                            export SHOW_BLT_VERSION=1
+                            ;;
+                    test_branch=*)
+                            export TEST_BRANCH=$(echo "${OPTARG}" | sed "s/test_branch=//g")
+
+                            if [[ -z $TEST_BRANCH ]]; then
+                                exit_blt 1 "Invalid format. Format is: --test_branch=<branchname>"
+                            fi
+                            ;;
+                    debug)
+                            echo "Debugging BLT ${command}"
+                            set -x
+                            export DEBUG=1;;
+                    help)
+                        blt_help
+                        exit_blt;;
+                    *)
+                        show_usage "${OPTARG}"
+                        exit_blt;;
+                esac;;
+        esac
+    done
+}
+
+in_supported_repo () {
+    local repo="$(git remote -v |
+                 grep "fetch" |
+                 sed 's/.*\/\(.*\)\.git.*/\1/g')"
+
+    if ! in_array "${repo}" "${SUPPORTED_REPOSITORIES}"; then
+        echo "BLT can only be used in the following repos: ${SUPPORTED_REPOSITORIES}"
+        exit_blt 1 "Please run BLT inside that repository"
+    fi
+}
+
+source_blt_files () {
+    local files=(${@})
+    local errors=0
+
+    for i in "${files[@]}"; do
+        if [[ ! -e "${HOME}/.blt/${i}" ]]; then
+            errors+=1
+            echo $(throw_source_error "${HOME}/.blt/${i}")
+        else
+            source "${HOME}/.blt/${i}"
+        fi
+    done
+
+    if [[ $errors -gt 0 ]]; then
+        exit 1
+    fi
+}
+
+throw_source_error () {
+    local file="${1}"
+
+    case $file in
+        *blt_config)
+            echo "blt_config does not exist and is required."
+            echo "See ${HOME}/.blt/config/example_config for an example configuration"
+            ;;
+        *)
+            echo "Dependency ${file} is missing. Please install it and try again."
+            ;;
+    esac
+}
+
+get_version_number () {
+    echo $(sed -e 's/# Version \(.*\).*/\1/g' "${BLT_REPO_LOCATION}/config/blt_config")
+}
+
+main () {
+    local run_command="${1}"
+    local arguments="${@:2}"
+
+    if [[ $SHOW_BLT_VERSION -eq 1 ]]; then
+        echo "BLT, version $(get_version_number)"
+        exit_blt 0 "copyright (C) 2015 Kenneth Petti"
+    fi
+
+
+    if [[ -n "${run_command}"
+        && -e "${BLT_REPO_LOCATION}"/bin/"${run_command}" ]]; then
+        "${BLT_REPO_LOCATION}"/bin/"${run_command}" ${arguments}
+        local exit_code=$?
+    fi
+
+    if [[ $exit_code -ne 0 ]]; then
+        exit_blt "${exit_code}" "${run_command} exited with non-zero exit code ${exit_code}"
+    else
+        exit_blt $exit_code
+    fi
+}
+
+source_blt_files "config/blt_config" "lib/utility_functions" "help/blt_help"
+process_args "${@}"
+
+# check_dependencies "modules" "${MODULES[@]}"
+# TODO: remove user, set temporarily
+USER="kpetti"
+
+main "${@}"

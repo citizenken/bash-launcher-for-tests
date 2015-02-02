@@ -1,0 +1,16 @@
+#!/bin/bash
+
+#Text attributes
+export RESET="\033[0m"
+export BOLD="\e[1m"
+
+#Color escape codes. Must be used with printf or echo -e
+export GREEN="\033[32m"
+export RED="\033[31m"
+export BLACK="\e[30m"
+export YELLOW="\e[33m"
+export BLUE="\e[34m"
+export MAGENTA="\e[35m"
+export CYAN="\e[36m"
+export WHITE="\e[37m"
+export DEFAULT="\e[39m"

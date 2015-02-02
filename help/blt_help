@@ -1,0 +1,5 @@
+#!/bin/bash
+
+blt_help () {
+	echo "This is the BLT help documentation"
+}

@@ -1,0 +1,94 @@
+#!/bin/bash
+
+export REMOTE_BLT_REPO_URL="https://raw.githubusercontent.com/citizenken/BLT-Test-Platform"
+export BLT_LAUNCHER_URL="${REMOTE_BLT_REPO_URL}/master/blt/blt"
+export CLONED_REPO_DIR="./blt-test-platform"
+export DEFAULT_REPO_LOCATION="${HOME}/.blt"
+
+
+parse_options () {
+    while getopts ":hy:-:" option; do
+        case $option in
+            h)
+                echo "${HELP}";;
+            y)
+                BLT_REPO_LOCATION="${OPTARG}";;
+            -)
+                case ${OPTARG} in
+                    repo_location)
+                        BLT_REPO_LOCATION="${OPTARG##*=}"
+                        if [[ -z $BLT_REPO_LOCATION ]]; then
+                            echo "Target repo for installation needs to be set before BLT can be installed"
+                            exit
+                        fi
+                        ;;
+                    help)
+                        export DEBUG=1
+                        set -x
+                        ;;
+                    *)
+                        echo "${OPTARG} is an invaild argument."
+                        echo "$HELP"
+                        exit;;
+                esac;;
+            *)
+                echo "${OPTARG} is an invaild argument."
+                echo "USAGE: install_blt [-y <path where app directory will in installed>]"
+                exit
+                ;;
+        esac
+    done
+}
+
+
+main () {
+# set -x
+    parse_options "${@}"
+
+    if [[ -z "${BLT_REPO_LOCATION}" ]]; then
+        echo "You did not specify where you would like the BLT repo to be installed."
+        until [[ $response == 'y' || $response == 'n' ]]; do
+            read -p "Install in the default location (${HOME}/.blt)? (y/n):" response
+        done
+
+        if [[ $response == 'y' ]]; then
+            if [[ -n "${HOME}" ]]; then
+                BLT_REPO_LOCATION="${DEFAULT_REPO_LOCATION}"
+            elif [[ -n "${HOME}" && $(uname -s) == "MINGW32"* ]]; then
+                read -p "Your home directory is not set. Please enter your username:" username
+                BLT_REPO_LOCATION="c:/USERS/$username/.blt"
+            fi
+        else
+            echo "Please rerun this script and pass in the -y option, followed by the desired directory"
+            exit
+        fi
+    fi
+
+    # Chmod all files in the app directory so they are executable
+    chmod -R +x "${CLONED_REPO_DIR}/app/"
+
+    # move blt file to bin
+    sudo mv "${CLONED_REPO_DIR}/app/blt" /usr/bin
+
+    # make destination directories
+    mkdir -p "${BLT_REPO_LOCATION}"
+    mkdir -p "${BLT_REPO_LOCATION}/user_configs"
+
+    # move files into the destination dir
+    mv "${CLONED_REPO_DIR}/app/" "${BLT_REPO_LOCATION}/app/"
+    # copy the configuration files for BLT in to the user's config
+    cp "${BLT_REPO_LOCATION}/app/config/blt_config" "${BLT_REPO_LOCATION}/user_configs/blt_config"
+
+    chmod +x "${BLT_REPO_LOCATION}"
+    # rm -rf ./blt_modular
+    # curl -ks "${BLT_LAUNCHER_URL}" > "${TARGET_REPO}blt_modular"
+
+    # chmod +x ${TARGET_REPO}blt_modular
+    # ${TARGET_REPO}blt_modular
+
+    exit
+
+}
+
+
+main "${@}"
