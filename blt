@@ -11,51 +11,6 @@ export LIB=("utility_functions")
 export HELP=("blt_help")
 # export MODULES=("check_set_environment")
 
-process_args() {
-    # Checks if there is a command to run passed in. Processes options
-
-    # local command=$1
-    # All blt launcher options are long, and blt launcher-specific options (only do thing in the launcher) begin with "yl"
-    while getopts ":*-:" options; do
-       case $options in
-            -)
-                case ${OPTARG} in
-                    version)
-                            export SHOW_BLT_VERSION=1
-                            ;;
-                    test_branch=*)
-                            export TEST_BRANCH=$(echo "${OPTARG}" | sed "s/test_branch=//g")
-
-                            if [[ -z $TEST_BRANCH ]]; then
-                                exit_blt 1 "Invalid format. Format is: --test_branch=<branchname>"
-                            fi
-                            ;;
-                    debug)
-                            echo "Debugging BLT ${command}"
-                            set -x
-                            export DEBUG=1;;
-                    help)
-                        blt_help
-                        exit_blt;;
-                    *)
-                        show_usage "${OPTARG}"
-                        exit_blt;;
-                esac;;
-        esac
-    done
-}
-
-in_supported_repo () {
-    local repo="$(git remote -v |
-                 grep "fetch" |
-                 sed 's/.*\/\(.*\)\.git.*/\1/g')"
-
-    if ! in_array "${repo}" "${SUPPORTED_REPOSITORIES}"; then
-        echo "BLT can only be used in the following repos: ${SUPPORTED_REPOSITORIES}"
-        exit_blt 1 "Please run BLT inside that repository"
-    fi
-}
-
 source_blt_files () {
     local files=(${@})
     local errors=0
@@ -88,24 +43,101 @@ throw_source_error () {
     esac
 }
 
-get_version_number () {
-    echo $(sed -e 's/# Version \(.*\).*/\1/g' "${BLT_REPO_LOCATION}/config/blt_config")
+in_supported_repo () {
+    local repo="$(git remote -v |
+                 grep "fetch" |
+                 sed 's/.*\/\(.*\)\.git.*/\1/g')"
+
+    if ! in_array "${repo}" "${SUPPORTED_REPOSITORIES}"; then
+        echo "BLT can only be used in the following repos: ${SUPPORTED_REPOSITORIES}"
+        exit_blt 1 "Please run BLT inside that repository"
+    fi
+}
+
+check_args_valid () {
+    local arguments="${@}"
+    local run_command="${1}"
+
+    if [[ -n "${run_command}" &&
+        "${run_command}" == *"-"* &&
+        ! "${run_command}" == *"--"* ||
+        -z "${run_command}" ]]; then
+        show_usage
+        exit_blt 1
+    fi
+}
+
+process_args() {
+
+    check_args_valid "${@}"
+
+    local first_arg="${1}"
+    local valid_args="${@}"
+
+    if [[ ! "${first_arg}" == *"--"* ]]; then
+        valid_args="${valid_args//$first_arg/}"
+        first_arg=""
+    fi
+
+    while getopts ":*-:" options ${valid_args[@]}; do
+       case $options in
+            -)
+                case ${OPTARG} in
+                    version)
+                        if [[ -n "$first_arg" ]]; then
+                            export SHOW_VERSION=1
+                        fi
+                        ;;
+                    test_branch=*)
+                        export TEST_BRANCH=$(echo "${OPTARG}" | sed "s/test_branch=//g")
+
+                        if [[ -z $TEST_BRANCH ]]; then
+                            exit_blt 1 "Invalid format. Format is: --test_branch=<branchname>"
+                        fi
+                        ;;
+                    verbose)
+                        VERBOSE=0;;
+                    xtrace*)
+                        echo "Setting xtrace for ${BASH_COMMAND}"
+                        if [[ "${OPTARG}" == "xtrace-log" ]]; then
+                            echo "Logging xtrace to ${BLT_REPO_LOCATION}/blt_xtrace"
+                            export XTRACE_LOG=1
+                        fi
+                        export XTRACE=1
+                        set -o xtrace
+                        ;;
+                    help)
+                        if [[ -n "$first_arg" ]]; then
+                            blt_help
+                            exit_blt
+                        fi
+                        ;;
+                    *)
+                        if [[ -n "$first_arg" ]]; then
+                            show_usage "${OPTARG}"
+                            exit_blt
+                        fi
+                        ;;
+                esac;;
+        esac
+    done
 }
 
 main () {
     local run_command="${1}"
     local arguments="${@:2}"
 
-    if [[ $SHOW_BLT_VERSION -eq 1 ]]; then
-        echo "BLT, version $(get_version_number)"
-        exit_blt 0 "copyright (C) 2015 Kenneth Petti"
-    fi
+    display_version_info
 
-
-    if [[ -n "${run_command}"
-        && -e "${BLT_REPO_LOCATION}"/bin/"${run_command}" ]]; then
-        "${BLT_REPO_LOCATION}"/bin/"${run_command}" ${arguments}
-        local exit_code=$?
+    if [[ -n "${run_command}" &&
+        -e "${BLT_REPO_LOCATION}"/bin/"${run_command}" ]]; then
+        if [[ $XTRACE_LOG -eq 1 ]]; then
+            "${BLT_REPO_LOCATION}"/bin/"${run_command}" ${arguments} 2>&1 | tee ./blt_xtrace
+            local exit_code=$?
+        else
+            "${BLT_REPO_LOCATION}"/bin/"${run_command}" ${arguments}
+            local exit_code=$?
+        fi
     fi
 
     if [[ $exit_code -ne 0 ]]; then
@@ -116,6 +148,7 @@ main () {
 }
 
 source_blt_files "config/blt_config" "lib/utility_functions" "help/blt_help"
+# in_supported_repo
 process_args "${@}"
 
 # check_dependencies "modules" "${MODULES[@]}"

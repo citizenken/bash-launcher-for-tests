@@ -7,7 +7,7 @@ check_dependencies () {
     local dependency_path
 
     for i in "${dependencies[@]}"; do
-        dependency_path="${BLT_REPO_LOCATION}${directory}/${i}"
+        dependency_path="${BLT_REPO_LOCATION}/${directory}/${i}"
         if [[ ! -e "${dependency_path}" ]]; then
             missing_dependencies=("${missing_dependencies[@]}" "${dependency_path}")
         fi
@@ -21,6 +21,19 @@ check_dependencies () {
         exit 1
     fi
 }
+
+export -f check_dependencies
+
+source_dependencies () {
+    local directory="${1}"
+    local files="${@:2}"
+
+    for i in "${files[@]}"; do
+        source "${BLT_REPO_LOCATION}/${directory}/${i}"
+    done
+}
+
+export -f source_dependencies
 
 prompt_for_y_n_answer () {
     local prompt="${1}"
@@ -83,15 +96,6 @@ find_index () {
     done
 }
 
-source_dependencies () {
-    local directory="${1}"
-    local files="${@:2}"
-
-    for i in "${files[@]}"; do
-        source "${BLT_REPO_LOCATION}/${directory}/${i}"
-    done
-}
-
 exit_blt () {
     local exit_code="${1}"
     local exit_message="${2}"
@@ -101,4 +105,20 @@ exit_blt () {
     fi
 
     exit ${exit_code}
+}
+
+get_version_number () {
+    local current_command="${1}"
+
+    echo $(grep "Version" "${BLT_REPO_LOCATION}/config/${current_command}_config" |\
+     sed -e 's/# Version \(.*\)\(.*\)/\1/g')
+}
+
+display_version_info () {
+    local current_command="${0##*/}"
+
+    if [[ $SHOW_VERSION -eq 1 ]]; then
+        echo "${current_command}, version $(get_version_number ${current_command})"
+        exit_blt 0 "copyright (C) 2015 Kenneth Petti"
+    fi
 }

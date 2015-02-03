@@ -1,16 +1,12 @@
 #!/bin/bash
 
-export REMOTE_BLT_REPO_URL="https://raw.githubusercontent.com/citizenken/BLT-Test-Platform"
-export BLT_LAUNCHER_URL="${REMOTE_BLT_REPO_URL}/master/blt/blt"
-export CLONED_REPO_DIR="./blt-test-platform"
-export DEFAULT_REPO_LOCATION="${HOME}/.blt"
 
 
 parse_options () {
     while getopts ":hy:-:" option; do
         case $option in
             h)
-                echo "${HELP}";;
+                echo "This is blah blah help";;
             y)
                 BLT_REPO_LOCATION="${OPTARG}";;
             -)
@@ -22,9 +18,16 @@ parse_options () {
                             exit
                         fi
                         ;;
-                    help)
+                    debug)
                         export DEBUG=1
                         set -x
+                        ;;
+                    help)
+                        echo "This is 'install' help"
+                        exit;;
+                    xtrace*)
+                        export XTRACE=1
+                        set -o xtrace
                         ;;
                     *)
                         echo "${OPTARG} is an invaild argument."
@@ -42,53 +45,29 @@ parse_options () {
 
 
 main () {
-# set -x
-    parse_options "${@}"
+    local file_source="${1}"
 
-    if [[ -z "${BLT_REPO_LOCATION}" ]]; then
-        echo "You did not specify where you would like the BLT repo to be installed."
-        until [[ $response == 'y' || $response == 'n' ]]; do
-            read -p "Install in the default location (${HOME}/.blt)? (y/n):" response
-        done
-
-        if [[ $response == 'y' ]]; then
-            if [[ -n "${HOME}" ]]; then
-                BLT_REPO_LOCATION="${DEFAULT_REPO_LOCATION}"
-            elif [[ -n "${HOME}" && $(uname -s) == "MINGW32"* ]]; then
-                read -p "Your home directory is not set. Please enter your username:" username
-                BLT_REPO_LOCATION="c:/USERS/$username/.blt"
-            fi
-        else
-            echo "Please rerun this script and pass in the -y option, followed by the desired directory"
-            exit
-        fi
+    if [[ "${file_source}" == *"http"* ]]; then
+        echo "url"
+    elif [[ -e "${file_source}" ]]; then
+        :
+    else
+        exit_blt 1 "Install source must be directory or repository archive url"
     fi
 
-    # Chmod all files in the app directory so they are executable
-    chmod -R +x "${CLONED_REPO_DIR}/app/"
+    local directories_to_copy=("bin" "config" "help" "lib" "modules")
 
-    # move blt file to bin
-    sudo mv "${CLONED_REPO_DIR}/app/blt" /usr/bin
-
-    # make destination directories
-    mkdir -p "${BLT_REPO_LOCATION}"
-    mkdir -p "${BLT_REPO_LOCATION}/user_configs"
-
-    # move files into the destination dir
-    mv "${CLONED_REPO_DIR}/app/" "${BLT_REPO_LOCATION}/app/"
-    # copy the configuration files for BLT in to the user's config
-    cp "${BLT_REPO_LOCATION}/app/config/blt_config" "${BLT_REPO_LOCATION}/user_configs/blt_config"
-
-    chmod +x "${BLT_REPO_LOCATION}"
-    # rm -rf ./blt_modular
-    # curl -ks "${BLT_LAUNCHER_URL}" > "${TARGET_REPO}blt_modular"
-
-    # chmod +x ${TARGET_REPO}blt_modular
-    # ${TARGET_REPO}blt_modular
-
-    exit
-
+    for i in "${directories_to_copy[@]}"; do
+        if [[ -e "${file_source}/${i}" ]]; then
+            cp -pR "${file_source}/${i}/" "${BLT_REPO_LOCATION}/${i}/"
+        fi
+    done
 }
 
+check_dependencies "config" "install_config"
+source_dependencies "config" "install_config"
+check_dependencies "lib" "${LIB[@]}"
+source_dependencies "lib" "${LIB[@]}"
 
+parse_options "${@}"
 main "${@}"

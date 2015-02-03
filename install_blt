@@ -17,7 +17,7 @@ check_root () {
 }
 
 parse_options () {
-    while getopts ":y:v" option; do
+    while getopts ":y:v-:" option; do
         case $option in
             v) VERBOSE=0;;
             y) BLT_REPO_LOCATION="${OPTARG}";;
